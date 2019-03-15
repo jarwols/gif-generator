@@ -1,4 +1,4 @@
-# Illuminate GIF Generator
+# GIF Generator
 
 ![Alt Text](light2929.gif)
 
@@ -9,7 +9,6 @@ A client-side GIF generator for producing Bay Bridge Light GIFS. Runs on @jnordb
 Make sure you have [Node.js](http://nodejs.org/) and the [Heroku Toolbelt](https://toolbelt.heroku.com/) installed.
 
 ```bash
-$ cd illuminate-gif-gen
 $ npm install
 $ npm start
 ```
