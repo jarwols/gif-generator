@@ -1,0 +1,203 @@
+<style>
+  canvas {
+    display: none
+  }
+
+  body {
+    background: black;
+  }
+
+  button {
+    background: white; 
+  }
+
+  h1 {
+    text-align: center; 
+    color: rgb(255, 102, 0);
+    font-size: 12px;
+    font-family: Verdana; 
+    width: 15rem;
+  }
+
+  img {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-right: -50%;
+    transform: translate(-50%, -50%);
+    width: 100% !important;
+  }
+
+  div {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-right: -50%;
+    transform: translate(-50%, -50%);
+    height: 9rem;
+    display: flex;
+    flex-direction: column;
+    align-content: space-between;
+    justify-content: space-around;
+  }
+
+  input {
+    width: 240px !important;
+    height: 30px; 
+    text-align: center;
+    opacity: 0.9;
+    border: 'white';
+    font-size: '1rem';
+    padding: '0.8rem 1rem 0.8rem 1rem';
+    line-height: '2rem';
+  }
+
+</style>
+<script src="/scripts/spin.min.js"></script>
+<script type="text/javascript" src="//api.filestackapi.com/filestack.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script src="/scripts/LZWEncoder.js"></script>
+<script src="/scripts/NeuQuant.js"></script>
+<script src="/scripts/gif.js"></script>
+<script src="/scripts/gif.worker.js"></script>
+<div>
+  <input id="inp" placeholder="Name of Recepient"/>
+  <input id="email" placeholder="E-mail Address for Download"/>
+  <button id="click">Generate GIF</button>
+  <h1 id="error"><%= er %></h1>
+</div>
+<canvas id="bitmap"></canvas>
+<img style="width: 100%" id="image"/>
+<script>
+  filepicker.setKey("AeVBTiIUGRIy6Hh4cVE78z");
+  var canvas = document.getElementById('bitmap');
+  var context = canvas.getContext('2d');
+  var spinner = new Spinner({color: "#fff"}).spin();
+  var target;
+  const CANVAS_RATIO = 5.614; 
+  const CANVAS_WIDTH = 1993; 
+  const CANVAS_HEIGHT = 821; 
+  const GIF_DELAY = 100; 
+  const START_DELAY = 400; 
+  const END_DELAY = 400; 
+  const ERROR = '&er=There was an issue storing your GIF. Please try again.';
+
+  function executeGIF(x, y, l, d, m) {
+    canvas.width = CANVAS_WIDTH; 
+    canvas.height = CANVAS_HEIGHT;
+
+    base_image = new Image();
+    base_image.src = '/baylight.jpg';
+    base_image.onload = function(){
+      context.drawImage(base_image, 0, 0);
+      var myData = context.getImageData(0, 0, base_image.width, base_image.height);
+      setTimeout(function() {
+        finish(x, y, l, d, m); 
+      }, 400);
+    }
+  }
+
+  function finish(x, y, l, d, m) {
+    donorText = d.toUpperCase(); 
+    x /= CANVAS_RATIO; 
+    y /= CANVAS_RATIO; 
+    var gif = new GIF({
+      workers: 10,
+      quality: 10,
+      repeat: 0,
+      width: 1420,
+      height: 600
+    });
+    var cx = (canvas.width)/2; 
+    context.save();  
+    for(var i = 9; i >= 0; i -= 1) {
+      drawTitle(l, donorText); 
+      if(i > 0) {
+        drawCircle(x, y, 1.8*i, 0.1); 
+        drawCircle(x, y, 1.15*i, 0.8); 
+      }
+      var delay = GIF_DELAY; 
+      if(i == 9) {
+        delay = START_DELAY;
+      } else if (i == 0) {
+        delay = END_DELAY; 
+      }
+      gif.addFrame(context, {copy:true, delay: delay});
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(base_image, 0, 0);
+    }
+    context.restore();
+    gif.on('finished', function(blob) {
+      var img = document.getElementById("image");
+      var dstUrl = URL.createObjectURL(blob);
+      img.src=dstUrl;
+      img.style.width = '100%'; 
+      downloadImage(dstUrl, l, blob, m, d);
+    });
+    gif.render();
+  }
+
+  function drawTitle(l, donorText) {
+    context.font="normal normal 600 30px Verdana";
+    context.fillStyle = 'white'; 
+    context.textAlign='center'; 
+    context.fillText("LIGHT #" + l + " SHINES FOR", 710, 120);
+    context.fillText(donorText, 710, 170);
+  }
+
+  function drawCircle(x, y, r, op) {
+    context.beginPath();
+    context.arc(x, y, r, 0, 2 * Math.PI, false);
+    context.fillStyle = 'rgba(255, 255, 255, ' + op + ')';
+    context.fill();
+  }
+
+  function downloadImage(blob,l,img, email, d) {
+    $(".spinner").remove(); 
+    filepicker.store(
+      img,
+      {filename: l + '.gif',
+       location: 'S3'},
+      function(Blob){
+        $.post( "https://illuminate-gif-generator.herokuapp.com/imagify", { email: email, image: Blob.key, light: l, name: d, src: Blob.url } )
+        .fail(function() {
+          var path = location.href.split(/&er/);
+          location.href = path[0] + ERROR;
+        });
+      },
+      function(FPError) {
+        var path = location.href.split(/&er/);
+        location.href = path[0] + ERROR;
+      },
+      function(progress) {
+        console.log("Loading: "+progress+"%");
+      }
+    );
+  }
+
+  function validateEmail(email) {
+    var re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(email);
+  }
+
+  function validate(email) {
+    if(!validateEmail(email)) {
+      $("#email").fadeIn(200).fadeOut(200).fadeIn(200).fadeOut(200).fadeIn(200);
+      return false; 
+    } else {
+      return true; 
+    }
+  }
+
+  $("#click").click(function() {
+    var text = $("#inp").val(); 
+    var mail = $("#email").val(); 
+    if(text.length > 0 && validate(mail)) {
+      $("#inp, #email, #click, #error").remove(); 
+      target = document.getElementsByTagName('body');
+      target[0].appendChild(spinner.el);
+      executeGIF(<%= x %>, <%= y %>, <%= l %>, text, mail); 
+    }
+  })
+
+</script>

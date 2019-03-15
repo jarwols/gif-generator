@@ -1,0 +1,6 @@
+{
+  "name": "Gif Generator",
+  "description": "A .gif generator for the Bay Bridge Lights",
+  "repository": "https://github.com/heroku/illuminate-gif-generator",
+  "keywords": ["lights", "bay", "bridge"],
+}
